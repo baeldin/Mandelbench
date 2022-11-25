@@ -53,35 +53,46 @@ inline double LinearMapping(double a, double b, double c, double d, double x) { 
 
 inline vec4f ImageFunction(double x, double y, double frame, int xres, int yres, int num_frames)
 {
-	constexpr int num_iters = 4096;
+	constexpr int num_iters = 255;
 
 	const double time  = LinearMapping(0, num_frames, 0.0, 3.141592653589793238 * 2, frame);
 	const double time2 = std::cos(3.141592653589793238 - time) * 0.5 + 0.5;
-	const double scale = std::exp(time2 * -11.0);
-	const vec2d centre = vec2d(-0.761574, -0.0847596);
+	const double scale = 3.*std::exp(time2 * -11.0);
+	const vec2d centre = vec2d(0, 0);
 	const vec2d z0 = vec2d(
 		LinearMapping(0, xres, -scale, scale, x),
 		LinearMapping(0, yres, scale, -scale, y) * aspect) + centre;
 
 	// Fast early out for main cardioid and period 2 bulb
 	// Ref: https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set#Cardioid_/_bulb_checking
-	const double q = (z0.x() - 0.25) * (z0.x() - 0.25) + z0.y() * z0.y();
+	/*const double q = (z0.x() - 0.25) * (z0.x() - 0.25) + z0.y() * z0.y();
 	const bool cardioid = (q * (q + (z0.x() - 0.25)) <= 0.25 * z0.y() * z0.y());
 	const bool bulb2 = ((z0.x() + 1) * (z0.x() + 1) + z0.y() * z0.y() < 0.0625);
 
 	if (cardioid || bulb2)
 		return vec4f(0);
-	else
+	else*/
 	{
-		constexpr double R = 25; // escape radius
+		//constexpr double R = 25000000; // escape radius
+		constexpr double R_smol = 0.000000001; // convergent bailout limit
 
 		vec2d z = z0;
+		vec2d z_old = vec2d(0., 0.); 
 		int iteration = 0;
-		for (; iteration < num_iters && (dot(z, z) < R * R); iteration++)
-			z = vec2d(z.x() * z.x() - z.y() * z.y(), 2 * z.x() * z.y()) + z0;
-
+		real div_sum = 0.; // exp smoothing outside
+		real conv_sum = 0.; // exp smoothing inside
+		//for (; iteration < num_iters && (dot(z, z) < R * R); iteration++)
+		for (; iteration < num_iters && (dot(z - z_old, z - z_old) > R_smol * R_smol); iteration++)
+		{
+			//z = vec2d(z.x() * z.x() - z.y() * z.y(), 2 * z.x() * z.y()) + z0;
+			z_old = z;
+			z = z - div_complex((cube_complex(z) - 1), square_complex(z) * 3.); // Newton
+			//z = z - div_complex((cube_complex(z) - 1), square_complex(z) * 3.) + z0; // Nova
+			div_sum += std::exp(-length(z));
+			conv_sum += std::exp(-1./length(z_old - z));
+		}
 		// Binary decomposition colouring, see https://mathr.co.uk/mandelbrot/book-draft/#binary-decomposition
-		const int binary = iteration == num_iters ? 0 : (z.y() > 0);
+		/*const int binary = iteration == num_iters ? 0 : (z.y() > 0);
 
 		const double log_r2 = std::log(dot(z, z));
 		const double dwell = (log_r2 <= 0) ? 0 : num_iters - iteration + std::log2(log_r2);
@@ -89,7 +100,12 @@ inline vec4f ImageFunction(double x, double y, double frame, int xres, int yres,
 
 		const vec4f colours[2] = { vec4f(220, 80, 40, 256) / 256, vec4f(80, 50, 220, 256) / 256 };
 		const vec4f col_out = colours[iteration % 2];
-		return col_out * col_out * (3.0f * binary) - dwell_loop * 0.05f;
+		return col_out * col_out * (3.0f * binary) - dwell_loop * 0.05f;*/
+		// Simple grayscale exponential smoothing attempt
+		if (iteration == num_iters)
+			return vec4f(int(256 - 10 * conv_sum) % 256, int(256 - 10 * conv_sum) % 256, int(256 - 10 * conv_sum) % 256, 256) / 256;
+		else
+			return vec4f(int(256 - 50 * div_sum) % 256, int(256 - 50 * div_sum) % 256, int(256 - 50 * div_sum) % 256, 256) / 256;
 	}
 }
 

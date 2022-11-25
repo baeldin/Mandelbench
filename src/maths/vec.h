@@ -96,6 +96,33 @@ inline vec<3, real_type> cross(const vec<3, real_type> & a, const vec<3, real_ty
 		a.x() * b.y() - a.y() * b.x());
 }
 
+// some complex operations for simpler code in main.cpp
+// complex division for two vec<2, ...>
+template<typename real_type>
+inline vec<2, real_type> div_complex(const vec<2, real_type>& v1, const vec<2, real_type>& v2)
+{
+	return vec<2, real_type>(
+		(v1.x() * v2.x() + v1.y() * v2.y()) / (v2.x() * v2.x() + v2.y() * v2.y()),
+		(v1.y() * v2.x() - v1.x() * v2.y()) / (v2.x() * v2.x() + v2.y() * v2.y()));
+}
+
+// complex squaring of vec<2, ...>
+template<typename real_type>
+inline vec<2, real_type> square_complex(const vec<2, real_type>& v)
+{
+	return vec<2, real_type>(
+		v.x() * v.x() - v.y() * v.y(),
+		2. * v.x() * v.y());
+}
+
+// complex cubing of vec<2, ...>
+template<typename real_type>
+inline vec<2, real_type> cube_complex(const vec<2, real_type>& v)
+{
+	return vec<2, real_type>(
+		v.x() * v.x() * v.x() - 3 * v.x() * v.y() * v.y(),
+		3. * v.x() * v.x() * v.y() - v.y() * v.y() * v.y());
+}
 
 using vec2i = vec<2, int>;
 using vec2r = vec<2, real>;
